@@ -1,6 +1,6 @@
 # Trivy Triage
 
-Generated: Mon Nov  3 17:50:14 -03 2025
+Generated: Mon Nov  3 17:58:47 -03 2025
 
 This report lists top vulnerabilities per image and severity counts. Review and prioritize CRITICAL → HIGH → MEDIUM → LOW.
 

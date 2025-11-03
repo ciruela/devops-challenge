@@ -201,7 +201,7 @@ Local security scan & parsing
 -----------------------------
 El script `scripts/ci-local.sh` ahora ejecuta (por defecto) escaneos de Trivy sobre las imágenes locales y deja los JSONs en `artifacts/trivy/`.
 
-Si prefieres saltar el escaneo (por ejemplo para acelerar runs locales), exporta:
+Si prefieres saltar el escaneo, exporta:
 
 ```bash
 export SKIP_TRIVY=1

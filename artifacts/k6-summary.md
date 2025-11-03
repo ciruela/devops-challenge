@@ -1,26 +1,34 @@
-# k6 Summary
+# k6 Summary (parsed from JSON)
 
-Generated: Mon Nov  3 17:50:14 -03 2025
+Generated: Mon Nov  3 17:58:46 -03 2025
 
 \n## Blue/Green
 
-- checks:      checks.........................: 100.00% ✓ 400       ✗ 0   
-- data_received:      data_received..................: 98 kB   4.9 kB/s
-- data_sent:      data_sent......................: 43 kB   2.1 kB/s
-- http_req_duration:      http_req_duration..............: avg=2.72ms   min=260.66µs med=1.54ms   max=22.24ms  p(90)=4.4ms    p(95)=7.88ms  
-- http_req_failed:      http_req_failed................: 0.00%   ✓ 0         ✗ 400 
-- http_reqs:      http_reqs......................: 400     19.913641/s
-- iterations:      iterations.....................: 400     19.913641/s
-- vus_max:      vus_max........................: 20      min=20      max=20
+- total_requests: 400
+- total_failed: 0
+- total_checks: 400
+- vus_max: 20
+- duration_s: unknown
+- duration_ms_avg: 15.352
+- duration_ms_min: 6.481
+- duration_ms_max: 45.980
+- duration_ms_p50: 13.910
+- duration_ms_p90: 20.449
+- duration_ms_p95: 26.428
+- duration_ms_p99: 43.620
 
 \n## Canary
 
-- checks:      checks.........................: 100.00% ✓ 150    ✗ 0   
-- data_received:      data_received..................: 37 kB   2.4 kB/s
-- data_sent:      data_sent......................: 17 kB   1.1 kB/s
-- http_req_duration:      http_req_duration..............: avg=3.25ms   min=770.75µs med=2.01ms   max=15.73ms  p(90)=7.79ms   p(95)=10.82ms 
-- http_req_failed:      http_req_failed................: 0.00%   ✓ 0      ✗ 150 
-- http_reqs:      http_reqs......................: 150     9.9399/s
-- iterations:      iterations.....................: 150     9.9399/s
-- vus_max:      vus_max........................: 10      min=10   max=10
+- total_requests: 150
+- total_failed: 0
+- total_checks: 150
+- vus_max: 10
+- duration_s: unknown
+- duration_ms_avg: 13.620
+- duration_ms_min: 5.363
+- duration_ms_max: 24.798
+- duration_ms_p50: 13.376
+- duration_ms_p90: 19.903
+- duration_ms_p95: 20.974
+- duration_ms_p99: 22.815
 
