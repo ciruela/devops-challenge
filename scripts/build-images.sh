@@ -12,10 +12,6 @@ eval "$(minikube -p minikube docker-env)"
 
 docker build -t content-blue:local -f apps/blue-v1/Dockerfile .
 docker build -t content-green:local -f apps/blue-v2/Dockerfile .
-if [ -f "apps/canary/Dockerfile" ]; then
-  docker build -t content-canary:local -f apps/canary/Dockerfile .
-else
-  echo "No canary Dockerfile found, skipping content-canary build"
-fi
+docker build -t content-canary:local -f apps/canary/Dockerfile .
 
 echo "Images built: content-blue:local, content-green:local, content-canary:local"

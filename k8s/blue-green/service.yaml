@@ -13,3 +13,15 @@ spec:
     app: content
     version: blue
   type: ClusterIP
+apiVersion: v1
+kind: Service
+metadata:
+  name: content-service
+spec:
+  selector:
+    app: content
+    version: blue
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: ClusterIP
