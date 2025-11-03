@@ -1,11 +1,11 @@
 from flask import Flask, jsonify, request
 import logging, sys, os
 
-app = Flask("Ciruelaa")
+app = Flask(__name__)
 logging.basicConfig(stream=sys.stdout, level=logging.INFO)
 
-VERSION = os.getenv("APP_VERSION", os.getenv("VERSION", "v1"))
-COLOR = os.getenv("APP_COLOR", "blue")
+VERSION = os.getenv("APP_VERSION", os.getenv("VERSION", "canary"))
+COLOR = os.getenv("APP_COLOR", "yellow")
 
 
 @app.route("/")
