@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+dist/
+.eggs/
+*.egg-info/
+.installed.cfg
+
+# Virtualenv
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Flask
+instance/
+.webassets-cache
+
+# Pytest
+.pytest_cache/
+
+# Editor configs
+.vscode/
+.idea/
+
+# macOS
+.DS_Store
+
+# Logs, temp
+*.log
+*.tmp
+*.swp
+
+# dotenv
+.env
+.env.*
+
+# Docker
+docker-compose.override.yml
+.envrc
+
+# Kubernetes / kube configs
+*.kubeconfig
+.kube/
+
+# Node
+node_modules/
+
+# System
+Thumbs.db
+
+# Coverage
+htmlcov/
+.coverage
+
+# Misc
+*.pid
+
+# Ignore local development overrides
+local_settings.py
+
+# Ignore secrets or sensitive local files
+secrets.json
+
+# ignore any IDE workspace files
+*.sublime-workspace
