@@ -28,11 +28,9 @@ jobs:
       - name: Set kubectl context
         uses: azure/setup-kubectl@v3
         with:
-          # use 'latest' to avoid runner/arch availability issues (action will install a compatible kubectl)
           version: 'latest'
 
       - name: Verify kubectl
-        # some kubectl builds don't support the --short flag; print client version in a compatible way
         run: |
           kubectl version --client || kubectl version || true
 
@@ -41,12 +39,26 @@ jobs:
           docker build -t content-blue:local -f apps/blue-v1/Dockerfile .
           docker build -t content-green:local -f apps/blue-v2/Dockerfile .
           docker build -t content-canary:local -f apps/canary/Dockerfile .
+          # build a hermetic k6 image for CI (avoid public multi-arch pulls)
+          docker build -t local/k6:ci -f scripts/k6/Dockerfile .
 
       - name: Load images into kind
         run: |
           kind load docker-image content-blue:local --name ci
           kind load docker-image content-green:local --name ci
           kind load docker-image content-canary:local --name ci
+          kind load docker-image local/k6:ci --name ci
+
+      - name: Scan built images with Trivy (fail on HIGH/CRITICAL)
+        run: |
+          echo "Scanning content-blue:local"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.44.0 image --severity HIGH,CRITICAL --exit-code 1 content-blue:local
+          echo "Scanning content-green:local"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.44.0 image --severity HIGH,CRITICAL --exit-code 1 content-green:local
+          echo "Scanning content-canary:local"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.44.0 image --severity HIGH,CRITICAL --exit-code 1 content-canary:local
+          echo "Scanning local/k6:ci"
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.44.0 image --severity HIGH,CRITICAL --exit-code 1 local/k6:ci
 
       - name: Apply Kubernetes manifests
         run: |
@@ -60,12 +72,18 @@ jobs:
 
       - name: Run k6 blue-green job (ci image)
         run: |
-          sed 's|image: local/k6:arm64|image: loadimpact/k6:latest|' k8s/load-test/job-bluegreen.yaml > /tmp/job-bluegreen.ci.yaml
+          sed 's|image: local/k6:arm64|image: local/k6:ci|' k8s/load-test/job-bluegreen.yaml > /tmp/job-bluegreen.ci.yaml
+          # replace the command to write a JSON results file inside the container
+          perl -0777 -pe 's/\["k6",\s*"run",\s*"\/scripts\/blue-green.js"\]/["k6","run","--out","json=\/tmp\/k6-bluegreen.json","\/scripts\/blue-green.js"]/s' -i /tmp/job-bluegreen.ci.yaml
           kubectl apply -f /tmp/job-bluegreen.ci.yaml
           echo "Waiting up to 10m for job/k6-bluegreen to complete..."
           if kubectl wait --for=condition=complete job/k6-bluegreen --timeout=600s; then
             echo "Job completed, printing logs"
             kubectl logs job/k6-bluegreen --tail=500
+            POD=$(kubectl get pods -l job-name=k6-bluegreen -o jsonpath='{.items[0].metadata.name}')
+            echo "Copying /tmp/k6-bluegreen.json from pod $POD"
+            kubectl cp default/${POD}:/tmp/k6-bluegreen.json ./k6-bluegreen.json || true
+            ls -la k6-bluegreen.json || true
           else
             echo "Job did not complete within timeout — collecting diagnostics"
             kubectl get jobs k6-bluegreen -o wide || true
@@ -77,14 +95,25 @@ jobs:
             exit 1
           fi
 
+      - name: Upload k6-bluegreen artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-bluegreen-results
+          path: k6-bluegreen.json
+
       - name: Run k6 canary job (ci image)
         run: |
-          sed 's|image: local/k6:arm64|image: loadimpact/k6:latest|' k8s/load-test/job-canary.yaml > /tmp/job-canary.ci.yaml
+          sed 's|image: local/k6:arm64|image: local/k6:ci|' k8s/load-test/job-canary.yaml > /tmp/job-canary.ci.yaml
+          perl -0777 -pe 's/\["k6",\s*"run",\s*"\/scripts\/canary.js"\]/["k6","run","--out","json=\/tmp\/k6-canary.json","\/scripts\/canary.js"]/s' -i /tmp/job-canary.ci.yaml
           kubectl apply -f /tmp/job-canary.ci.yaml
           echo "Waiting up to 10m for job/k6-canary to complete..."
           if kubectl wait --for=condition=complete job/k6-canary --timeout=600s; then
             echo "Job completed, printing logs"
             kubectl logs job/k6-canary --tail=500
+            POD=$(kubectl get pods -l job-name=k6-canary -o jsonpath='{.items[0].metadata.name}')
+            echo "Copying /tmp/k6-canary.json from pod $POD"
+            kubectl cp default/${POD}:/tmp/k6-canary.json ./k6-canary.json || true
+            ls -la k6-canary.json || true
           else
             echo "Job did not complete within timeout — collecting diagnostics"
             kubectl get jobs k6-canary -o wide || true
@@ -94,6 +123,12 @@ jobs:
             kubectl logs -l job-name=k6-canary --tail=500 || true
             exit 1
           fi
+
+      - name: Upload k6-canary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-canary-results
+          path: k6-canary.json
 
       - name: Tear down kind
         if: always()
