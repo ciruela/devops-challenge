@@ -197,5 +197,36 @@ CI en GitHub Actions
 --------------------
 - `.github/workflows/ci.yml` reproduce el flujo: crea cluster kind en runner, build images, carga en kind, aplica manifests, corre jobs k6 (modificados para escribir JSON) y sube artifacts.
 
+Local security scan & parsing
+-----------------------------
+El script `scripts/ci-local.sh` ahora ejecuta (por defecto) escaneos de Trivy sobre las imágenes locales y deja los JSONs en `artifacts/trivy/`.
+
+Si prefieres saltar el escaneo, exporta:
+
+```bash
+export SKIP_TRIVY=1
+./scripts/ci-local.sh
+```
+
+Además hay un script `scripts/parse-artifacts.sh` que toma los logs/JSONs existentes en `artifacts/` y genera dos reportes legibles:
+
+- `artifacts/k6-summary.md` — resumen compacto de los resultados k6 (checks, rps, latencias p95/p90 si disponibles).
+- `artifacts/trivy-triage.md` — triage de vulnerabilidades extraído de los JSONs de Trivy (ordenado por severidad y con los top findings).
+
+Ejemplo de uso:
+
+```bash
+# correr el flujo completo (incluye Trivy salvo que SKIP_TRIVY=1)
+./scripts/ci-local.sh
+
+# luego generar resúmenes legibles
+chmod +x ./scripts/parse-artifacts.sh
+./scripts/parse-artifacts.sh
+
+# ver resultados
+less artifacts/k6-summary.md
+less artifacts/trivy-triage.md
+```
+
 
 

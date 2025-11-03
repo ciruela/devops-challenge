@@ -30,6 +30,31 @@ build_images() {
   docker build -t local/k6:ci -f scripts/k6/Dockerfile .
 }
 
+run_trivy_scans() {
+  # Optional Trivy scans for local images. Honor SKIP_TRIVY=1 to skip.
+  if [ "${SKIP_TRIVY:-0}" = "1" ]; then
+    echo "SKIP_TRIVY=1 set — skipping Trivy scans"
+    return 0
+  fi
+
+  command -v docker >/dev/null 2>&1 || { echo "docker not found; skipping trivy" >&2; return 0; }
+
+  echo "Running Trivy image scans (this may download DB and take some time)..."
+  mkdir -p "$ARTIFACTS_DIR/trivy"
+
+  for img in content-blue:local content-green:local content-canary:local; do
+    # Only scan images that exist locally
+    if docker image inspect "$img" >/dev/null 2>&1; then
+      outf="$ARTIFACTS_DIR/trivy/$(echo "$img" | tr ':' '-' ).json"
+      echo "Scanning $img -> $outf"
+      docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$ARTIFACTS_DIR/trivy":/output aquasec/trivy:0.44.0 image --format json --output /output/$(basename "$outf") "$img" || true
+    else
+      echo "Image $img not found locally — skipping Trivy scan for it"
+    fi
+  done
+  echo "Trivy scans completed (look in $ARTIFACTS_DIR/trivy)"
+}
+
 create_kind() {
   if kind get clusters | grep -q "^${CLUSTER_NAME}$"; then
     echo "kind cluster ${CLUSTER_NAME} already exists — reusing"
@@ -150,6 +175,8 @@ run_k6_job() {
 
 main() {
   build_images
+  # Run Trivy scans locally (optional, set SKIP_TRIVY=1 to skip)
+  run_trivy_scans
   create_kind
   load_images
   apply_manifests
