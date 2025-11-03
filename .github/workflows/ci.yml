@@ -13,6 +13,7 @@ jobs:
       KIND_CLUSTER: ci
       ARTIFACT_BLUE: k6-bluegreen.json
       ARTIFACT_CANARY: k6-canary.json
+      TARGET_HOST: 127.0.0.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -90,6 +91,11 @@ jobs:
           mkdir -p artifacts
           kubectl get configmap k6-scripts -o json | jq -r '.data["blue-green.js"]' > artifacts/blue-green.js
           kubectl get configmap k6-scripts -o json | jq -r '.data["canary.js"]' > artifacts/canary.js
+          # When running k6 on the runner and using kubectl port-forward, the runner
+          # cannot resolve Kubernetes cluster DNS names. Replace cluster DNS hostnames
+          # with localhost:PORT so k6 connects to the port-forwarded service.
+          sed -E -i "s|content-service-canary.default.svc.cluster.local|127.0.0.1:8081|g" artifacts/canary.js || true
+          sed -E -i "s|content-service.default.svc.cluster.local|127.0.0.1:8080|g" artifacts/blue-green.js || true
 
       - name: Download k6 binary
         run: |
