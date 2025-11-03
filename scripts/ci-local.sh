@@ -75,13 +75,34 @@ run_k6_job() {
     if [[ "$job_name" == "k6-bluegreen" ]]; then
       kubectl get configmap k6-scripts -o json | jq -r '.data["blue-green.js"]' > "$ARTIFACTS_DIR/blue-green.js"
       SCRIPT_PATH="$ARTIFACTS_DIR/blue-green.js"
-      # When running k6 from a Docker container on macOS, use host.docker.internal to reach
-      # the host port-forward. 127.0.0.1 inside the container is the container itself.
-      TARGET_URL="http://host.docker.internal:8080/"
+      # Determine target host for k6 to reach the port-forwarded service.
+      # Priority: use $TARGET_HOST if caller set it (useful for CI). Otherwise:
+      # - On GitHub Actions (GITHUB_ACTIONS=true) use 127.0.0.1
+      # - On macOS use host.docker.internal (Docker-for-mac reachable host)
+      # - Fallback to 127.0.0.1
+      if [ -n "${TARGET_HOST:-}" ]; then
+        THOST="$TARGET_HOST"
+      elif [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+        THOST="127.0.0.1"
+      elif [ "$(uname -s)" = "Darwin" ]; then
+        THOST="host.docker.internal"
+      else
+        THOST="127.0.0.1"
+      fi
+      TARGET_URL="http://$THOST:8080/"
     else
       kubectl get configmap k6-scripts -o json | jq -r '.data["canary.js"]' > "$ARTIFACTS_DIR/canary.js"
       SCRIPT_PATH="$ARTIFACTS_DIR/canary.js"
-      TARGET_URL="http://host.docker.internal:8081/"
+      if [ -n "${TARGET_HOST:-}" ]; then
+        THOST="$TARGET_HOST"
+      elif [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+        THOST="127.0.0.1"
+      elif [ "$(uname -s)" = "Darwin" ]; then
+        THOST="host.docker.internal"
+      else
+        THOST="127.0.0.1"
+      fi
+      TARGET_URL="http://$THOST:8081/"
     fi
   else
     echo "k6 configmap not found; cannot extract scripts" >&2
@@ -91,9 +112,11 @@ run_k6_job() {
   # Patch the script to point to the host port-forward (use explicit replacements).
   # Replace the cluster DNS names with host.docker.internal and the forwarded port so
   # the k6 container can reach the services when run from Docker on macOS.
+  # Rewrite script hostnames to point to the resolved target host so k6 can reach
+  # the port-forwarded services regardless of runner vs Docker on macOS.
   sed -E \
-    -e "s|content-service-canary.default.svc.cluster.local|host.docker.internal:8081|g" \
-    -e "s|content-service.default.svc.cluster.local|host.docker.internal:8080|g" \
+    -e "s|content-service-canary.default.svc.cluster.local|${THOST}:8081|g" \
+    -e "s|content-service.default.svc.cluster.local|${THOST}:8080|g" \
     "$SCRIPT_PATH" > "${SCRIPT_PATH}.local" && mv "${SCRIPT_PATH}.local" "$SCRIPT_PATH"
 
   # Start port-forward to the appropriate service
