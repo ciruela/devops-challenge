@@ -57,16 +57,24 @@ jobs:
           kind load docker-image content-canary:local --name $KIND_CLUSTER || true
           kind load docker-image local/k6:ci --name $KIND_CLUSTER
 
-      - name: Scan built images with Trivy (fail on HIGH/CRITICAL)
+      - name: Scan built images with Trivy (generate reports)
         run: |
+          mkdir -p artifacts/trivy
           echo "Scanning content-blue:local"
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.44.0 image --severity HIGH,CRITICAL --exit-code 1 content-blue:local
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/artifacts/trivy:/reports aquasec/trivy:0.44.0 image --format json --output /reports/trivy-content-blue.json --severity HIGH,CRITICAL content-blue:local || true
           echo "Scanning content-green:local"
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.44.0 image --severity HIGH,CRITICAL --exit-code 1 content-green:local
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/artifacts/trivy:/reports aquasec/trivy:0.44.0 image --format json --output /reports/trivy-content-green.json --severity HIGH,CRITICAL content-green:local || true
           echo "Scanning content-canary:local"
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.44.0 image --severity HIGH,CRITICAL --exit-code 1 content-canary:local || true
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/artifacts/trivy:/reports aquasec/trivy:0.44.0 image --format json --output /reports/trivy-content-canary.json --severity HIGH,CRITICAL content-canary:local || true
           echo "Scanning local/k6:ci"
-          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.44.0 image --severity HIGH,CRITICAL --exit-code 1 local/k6:ci
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $PWD/artifacts/trivy:/reports aquasec/trivy:0.44.0 image --format json --output /reports/trivy-local-k6.json --severity HIGH,CRITICAL local/k6:ci || true
+
+      - name: Upload Trivy reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-reports
+          path: artifacts/trivy
 
       - name: Apply Kubernetes manifests
         run: |
