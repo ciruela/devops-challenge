@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: content-canary
+  labels:
+    app: content
+    track: canary
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: content
+      track: canary
+  template:
+    metadata:
+      labels:
+        app: content
+        track: canary
+    spec:
+      containers:
+        - name: content
+          image: content-green:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: APP_VERSION
+              value: "v2-canary"
+            - name: APP_COLOR
+              value: "green-canary"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "250m"
+              memory: "128Mi"
